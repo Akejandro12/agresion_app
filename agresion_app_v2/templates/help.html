@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Centro de Ayuda — Detección Agresiva{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <h1>❓ Centro de <span>Ayuda</span></h1>
+    <p>Guías, preguntas frecuentes y documentación del sistema</p>
+  </div>
+
+  <div style="width:100%;max-width:820px;display:flex;flex-direction:column;gap:20px;">
+
+    <!-- Inicio rápido -->
+    <div class="card">
+      <span class="section-title">🚀 Inicio rápido</span>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;">
+          <div style="font-size:1.6rem;margin-bottom:8px;">1️⃣</div>
+          <strong style="font-size:.88rem;">Sube tu video</strong>
+          <p style="color:var(--muted);font-size:.8rem;margin-top:5px;line-height:1.5;">
+            Arrastra o selecciona un video MP4, AVI, MOV, MKV o WEBM de hasta 200 MB.
+          </p>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;">
+          <div style="font-size:1.6rem;margin-bottom:8px;">2️⃣</div>
+          <strong style="font-size:.88rem;">El sistema analiza</strong>
+          <p style="color:var(--muted);font-size:.8rem;margin-top:5px;line-height:1.5;">
+            YOLOv8 detecta personas y estima keypoints. BiLSTM clasifica el comportamiento.
+          </p>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;">
+          <div style="font-size:1.6rem;margin-bottom:8px;">3️⃣</div>
+          <strong style="font-size:.88rem;">Revisa el resultado</strong>
+          <p style="color:var(--muted);font-size:.8rem;margin-top:5px;line-height:1.5;">
+            Obtén la predicción, probabilidades y nivel de confianza del modelo.
+          </p>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;">
+          <div style="font-size:1.6rem;margin-bottom:8px;">4️⃣</div>
+          <strong style="font-size:.88rem;">Descarga video KP</strong>
+          <p style="color:var(--muted);font-size:.8rem;margin-top:5px;line-height:1.5;">
+            En el historial puedes ver y descargar el video con los keypoints superpuestos.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Módulos del sistema -->
+    <div class="card">
+      <span class="section-title">🗂️ Módulos del sistema</span>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:.85rem;">
+        <div style="display:flex;gap:12px;padding:10px;background:var(--bg);border-radius:8px;align-items:flex-start;">
+          <span style="font-size:1.2rem;">🎬</span>
+          <div>
+            <strong>Analizar</strong> — Página principal para subir videos y obtener predicciones con el modelo .pt (PyTorch).
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;padding:10px;background:var(--bg);border-radius:8px;align-items:flex-start;">
+          <span style="font-size:1.2rem;">🕓</span>
+          <div>
+            <strong>Historial</strong> — Registro de todas las predicciones. Permite filtrar, ver el video con keypoints y eliminar registros.
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;padding:10px;background:var(--bg);border-radius:8px;align-items:flex-start;">
+          <span style="font-size:1.2rem;">📊</span>
+          <div>
+            <strong>Estadísticas</strong> — KPIs, gráficas de distribución de clases, actividad diaria y niveles de diagnóstico.
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;padding:10px;background:var(--bg);border-radius:8px;align-items:flex-start;">
+          <span style="font-size:1.2rem;">🔔</span>
+          <div>
+            <strong>Alertas</strong> — Notificaciones automáticas. Se generan alertas CRITICAL cuando se detecta agresión con ≥70% de confianza.
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;padding:10px;background:var(--bg);border-radius:8px;align-items:flex-start;">
+          <span style="font-size:1.2rem;">⚡</span>
+          <div>
+            <strong>ONNX</strong> — Página alternativa para inferencia con modelo exportado a formato ONNX. Más rápido en CPU.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="card">
+      <span class="section-title">💬 Preguntas frecuentes</span>
+      <div id="faq">
+
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            ¿Qué tipos de video son compatibles?
+            <span class="chevron">▾</span>
+          </button>
+          <div class="faq-a">
+            Se aceptan videos en formato <strong>MP4, AVI, MOV, MKV y WEBM</strong> con un tamaño máximo de 200 MB.
+            Se recomienda video de al menos 2 segundos con 2 personas visibles.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            ¿Por qué la confianza es baja?
+            <span class="chevron">▾</span>
+          </button>
+          <div class="faq-a">
+            La confianza puede ser baja si: el video no muestra exactamente 2 personas, la resolución es muy baja,
+            la duración es muy corta (&lt;2 s), las personas están parcialmente ocluidas, o las condiciones de iluminación son deficientes.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            ¿Qué son los keypoints?
+            <span class="chevron">▾</span>
+          </button>
+          <div class="faq-a">
+            Los keypoints son 17 puntos articulares del cuerpo humano (nariz, hombros, codos, muñecas, caderas, rodillas, tobillos, etc.)
+            detectados por YOLOv8-pose según el estándar COCO. El modelo BiLSTM analiza el movimiento de estos puntos a lo largo del tiempo.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            ¿Cómo uso el modelo ONNX?
+            <span class="chevron">▾</span>
+          </button>
+          <div class="faq-a">
+            Ve a la sección <strong>⚡ ONNX</strong> en el menú. Necesitas exportar tu modelo BiLSTM a formato ONNX
+            (<code>torch.onnx.export(...)</code>) y colocar el archivo como <code>model.onnx</code> en la carpeta principal.
+            Instala también <code>pip install onnxruntime</code>.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            ¿El video original se guarda en el servidor?
+            <span class="chevron">▾</span>
+          </button>
+          <div class="faq-a">
+            No. El video original se elimina automáticamente después del procesamiento. Solo se conserva el video
+            generado con keypoints (en la carpeta <code>kp_videos/</code>) y los metadatos de la predicción en la base de datos.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-q" onclick="toggleFaq(this)">
+            ¿Cómo interpreto los logits?
+            <span class="chevron">▾</span>
+          </button>
+          <div class="faq-a">
+            Los logits son los valores crudos de salida del modelo antes de aplicar softmax.
+            Logit clase 0 = "No agresivo", Logit clase 1 = "Agresivo". Un logit positivo más alto en una clase indica mayor preferencia del modelo por esa clase.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Comandos técnicos -->
+    <div class="card">
+      <span class="section-title">⚙️ Referencia técnica</span>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:.83rem;">
+        <div>
+          <div style="color:var(--muted);margin-bottom:4px;">Iniciar la aplicación extendida:</div>
+          <code style="display:block;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--accent);font-family:var(--mono);">python app_extended.py</code>
+        </div>
+        <div>
+          <div style="color:var(--muted);margin-bottom:4px;">Exportar modelo a ONNX (PyTorch):</div>
+          <code style="display:block;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--accent);font-family:var(--mono);">
+import torch<br>
+dummy = torch.randn(1, 40, 2, 17, 5)<br>
+torch.onnx.export(model, dummy, "model.onnx",<br>
+&nbsp;&nbsp;input_names=["input"], output_names=["logits"],<br>
+&nbsp;&nbsp;opset_version=14)
+          </code>
+        </div>
+        <div>
+          <div style="color:var(--muted);margin-bottom:4px;">Instalar dependencias adicionales:</div>
+          <code style="display:block;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--accent);font-family:var(--mono);">pip install onnxruntime</code>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+</script>
+{% endblock %}

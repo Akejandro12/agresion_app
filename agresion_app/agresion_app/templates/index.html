@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+{% block title %}Detección de Comportamiento Agresivo{% endblock %}
+
+{% block content %}
+<div class="page">
+  <header style="text-align:center;margin-bottom:36px;">
+    <h1 style="font-size:1.75rem;font-weight:700;letter-spacing:-.02em;color:#fff;">
+      Detección de <span style="color:var(--accent);">Comportamiento Agresivo</span>
+    </h1>
+    <p style="margin-top:6px;color:var(--muted);font-size:.9rem;">
+      Análisis de video mediante estimación de pose y clasificación LSTM
+    </p>
+  </header>
+
+  <!-- Estado del sistema -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:28px;font-size:.78rem;">
+    <div class="badge-pill">
+      <span class="dot {{ 'ok' if model_ok else 'err' }}"></span>
+      Modelo {{ model_arch }}
+    </div>
+    <div class="badge-pill">
+      <span class="dot {{ 'ok' if yolo_ok else 'err' }}"></span>
+      YOLOv8-pose
+    </div>
+    <div class="badge-pill">
+      <span class="dot info"></span>
+      {{ device.upper() }}
+    </div>
+    <div class="badge-pill">
+      <span class="dot info"></span>
+      T={{ target_t }} frames
+    </div>
+  </div>
+
+  <!-- Card principal -->
+  <div class="card" style="max-width:560px;">
+
+    <!-- Zona de upload -->
+    <div id="upload-section">
+      <div id="drop-zone" style="border:2px dashed var(--border);border-radius:var(--radius);
+           padding:36px 20px;text-align:center;cursor:pointer;
+           transition:border-color .2s,background .2s;position:relative;">
+        <input type="file" id="file-input"
+               accept="video/mp4,video/avi,video/quicktime,video/x-matroska,video/webm"
+               style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;" />
+        <span style="font-size:2.4rem;display:block;margin-bottom:10px;"></span>
+        <p style="color:var(--muted);font-size:.88rem;line-height:1.5;">
+          Arrastra un video aquí o <strong>haz clic para seleccionar</strong>
+        </p>
+        <p style="font-size:.78rem;margin-top:4px;color:var(--muted);">
+          MP4, AVI, MOV, MKV, WEBM · máx. 200 MB
+        </p>
+        <div id="file-name-display"
+             style="margin-top:10px;color:var(--accent);font-size:.85rem;font-weight:600;word-break:break-all;"></div>
+      </div>
+
+      <!-- Preview del video seleccionado -->
+      <div id="preview-section" style="display:none;margin-top:14px;">
+        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;
+                    color:var(--muted);margin-bottom:8px;">Vista previa</div>
+
+        <!-- Spinner de conversión (visible solo para formatos no nativos) -->
+        <div id="preview-converting"
+             style="display:none;align-items:center;gap:10px;padding:14px 0;color:var(--muted);font-size:.83rem;">
+          <div style="width:18px;height:18px;border:2px solid var(--border);
+               border-top-color:var(--accent);border-radius:50%;
+               animation:spin .7s linear infinite;flex-shrink:0;"></div>
+          Convirtiendo para vista previa...
+        </div>
+
+        <video id="preview-video" controls
+               style="width:100%;border-radius:8px;background:#000;max-height:280px;
+                      display:block;outline:1px solid var(--border);">
+        </video>
+      </div>
+
+      <button id="submit-btn" disabled
+        style="margin-top:18px;width:100%;padding:12px;background:var(--accent);color:#fff;
+               font-size:.95rem;font-weight:600;border:none;border-radius:var(--radius);
+               cursor:pointer;transition:background .2s,opacity .2s;letter-spacing:.02em;">
+        Analizar video
+      </button>
+      <div id="error-box"
+           style="display:none;margin-top:16px;padding:12px 14px;
+                  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+                  border-radius:6px;color:#fca5a5;font-size:.85rem;"></div>
+    </div>
+
+    <!-- Loader -->
+    <div id="loader"
+         style="display:none;flex-direction:column;align-items:center;gap:14px;padding:32px 0;text-align:center;">
+      <div style="width:42px;height:42px;border:3px solid var(--border);border-top-color:var(--accent);
+           border-radius:50%;animation:spin .8s linear infinite;"></div>
+      <p style="color:var(--muted);font-size:.88rem;">Procesando video...</p>
+      <div id="progress-text"
+           style="font-size:.82rem;color:var(--muted);font-family:var(--mono);">
+        Extrayendo frames → detectando keypoints → clasificando
+      </div>
+    </div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+    <!-- Resultado -->
+    <div id="result" style="display:none;margin-top:24px;">
+
+      <div id="verdict-box"
+           style="display:flex;align-items:center;gap:14px;padding:18px 20px;
+                  border-radius:var(--radius);border:1px solid;margin-bottom:20px;">
+        <span id="verdict-icon" style="font-size:2rem;"></span>
+        <div>
+          <div id="verdict-label"
+               style="font-size:1.3rem;font-weight:700;letter-spacing:-.01em;"></div>
+          <div id="verdict-conf" style="font-size:.82rem;color:var(--muted);margin-top:2px;"></div>
+        </div>
+      </div>
+
+      <!-- Barras de probabilidad -->
+      <div>
+        <h4 style="font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;
+                   color:var(--muted);margin-bottom:12px;">Probabilidades por clase</h4>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:5px;">
+            <span>No agresivo</span>
+            <span id="pct-safe" style="color:var(--muted);font-family:var(--mono);">—</span>
+          </div>
+          <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+            <div id="bar-safe"
+                 style="height:100%;width:0%;background:var(--safe);border-radius:4px;transition:width .6s;"></div>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:5px;">
+            <span>Agresivo</span>
+            <span id="pct-aggressive" style="color:var(--muted);font-family:var(--mono);">—</span>
+          </div>
+          <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+            <div id="bar-aggressive"
+                 style="height:100%;width:0%;background:var(--danger);border-radius:4px;transition:width .6s;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:20px;">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px;">Frames analizados</div>
+          <div id="meta-frames" style="font-size:.88rem;font-weight:600;font-family:var(--mono);">—</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px;">FPS original</div>
+          <div id="meta-fps" style="font-size:.88rem;font-weight:600;font-family:var(--mono);">—</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px;">Logit clase 0</div>
+          <div id="meta-logit0" style="font-size:.88rem;font-weight:600;font-family:var(--mono);">—</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px;">Logit clase 1</div>
+          <div id="meta-logit1" style="font-size:.88rem;font-weight:600;font-family:var(--mono);">—</div>
+        </div>
+      </div>
+
+      <div id="diagnosis-box"
+           style="margin-top:16px;padding:12px 14px;border-radius:6px;font-size:.82rem;line-height:1.5;"></div>
+
+      <!-- Video KP con range requests -->
+      <div id="kp-section" style="display:none;margin-top:16px;">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;">
+          <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;">
+             Video con Keypoints generado
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="kp-view-btn" class="btn btn-ghost btn-sm">👁 Ver video</button>
+            <a id="kp-dl-btn" href="#" class="btn btn-ghost btn-sm">⬇ Descargar</a>
+          </div>
+          <video id="kp-video-inline" controls preload="none"
+                 style="width:100%;border-radius:6px;background:#000;margin-top:10px;display:none;max-height:300px;">
+          </video>
+        </div>
+      </div>
+
+      <button id="reset-btn"
+        style="margin-top:18px;width:100%;padding:10px;background:transparent;color:var(--muted);
+               font-size:.88rem;border:1px solid var(--border);border-radius:var(--radius);
+               cursor:pointer;transition:border-color .2s,color .2s;">
+        ← Analizar otro video
+      </button>
+    </div>
+
+  </div>
+
+  <footer style="margin-top:40px;color:var(--muted);font-size:.75rem;text-align:center;">
+    Checkpoint: {{ checkpoint }} &nbsp;·&nbsp; {{ n_frames }} frames extraídos por video
+  </footer>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const fileInput        = document.getElementById('file-input');
+const dropZone         = document.getElementById('drop-zone');
+const fileDisplay      = document.getElementById('file-name-display');
+const submitBtn        = document.getElementById('submit-btn');
+const uploadSec        = document.getElementById('upload-section');
+const loader           = document.getElementById('loader');
+const resultSec        = document.getElementById('result');
+const errorBox         = document.getElementById('error-box');
+const previewSec       = document.getElementById('preview-section');
+const previewVid       = document.getElementById('preview-video');
+const previewConverting = document.getElementById('preview-converting');
+
+let selectedFile = null;
+let previewURL   = null;   // URL.createObjectURL — se revoca al resetear
+
+// Formatos que los navegadores reproducen nativamente (sin conversión)
+const NATIVE_FORMATS = ['mp4', 'webm'];
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) setFile(fileInput.files[0]);
+});
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--accent)';
+  dropZone.style.background  = 'rgba(59,130,246,.05)';
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.style.borderColor = 'var(--border)';
+  dropZone.style.background  = '';
+});
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--border)';
+  dropZone.style.background  = '';
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+
+// ── Seleccionar archivo y mostrar preview ────────────────────────────────────
+function setFile(file) {
+  selectedFile = file;
+  const mb  = (file.size / 1024 / 1024).toFixed(1);
+  const ext = file.name.split('.').pop().toLowerCase();
+  fileDisplay.textContent = `${file.name}  (${mb} MB)`;
+  submitBtn.disabled = false;
+  errorBox.style.display = 'none';
+
+  // Revocar URL anterior si existía
+  if (previewURL) { URL.revokeObjectURL(previewURL); previewURL = null; }
+
+  // Limpiar el elemento <video>
+  previewVid.pause();
+  previewVid.removeAttribute('src');
+  previewVid.load();
+
+  previewSec.style.display = 'block';
+
+  if (NATIVE_FORMATS.includes(ext)) {
+    // ── Formato nativo → preview directo sin subir nada ──────────────────
+    previewConverting.style.display = 'none';
+    previewVid.style.display = 'block';
+    previewURL = URL.createObjectURL(file);
+    previewVid.src = previewURL;
+    previewVid.load();
+  } else {
+    // ── Formato no nativo (AVI, MKV, MOV…) → convertir en el servidor ────
+    previewConverting.style.display = 'flex';
+    previewVid.style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('video', file);
+
+    fetch('/api/preview', { method: 'POST', body: fd })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then(blob => {
+        previewConverting.style.display = 'none';
+        previewURL = URL.createObjectURL(blob);
+        previewVid.src = previewURL;
+        previewVid.load();
+        previewVid.style.display = 'block';
+      })
+      .catch(err => {
+        previewConverting.style.display = 'none';
+        // Si la conversión falla, mostrar mensaje pero permitir el análisis
+        previewVid.style.display = 'none';
+        const msg = document.createElement('p');
+        msg.id = 'preview-error-msg';
+        msg.style.cssText = 'font-size:.8rem;color:var(--muted);padding:10px 0;';
+        msg.textContent = '⚠️ Vista previa no disponible para este formato. Puedes analizarlo igualmente.';
+        // Eliminar mensaje anterior si existe
+        const old = document.getElementById('preview-error-msg');
+        if (old) old.remove();
+        previewSec.appendChild(msg);
+      });
+  }
+}
+
+// ── Enviar al servidor para análisis ─────────────────────────────────────────
+submitBtn.addEventListener('click', () => {
+  if (!selectedFile) return;
+
+  previewVid.pause();
+  uploadSec.style.display = 'none';
+  loader.style.display    = 'flex';
+
+  const msgs = [
+    'Extrayendo frames del video...',
+    'Detectando personas con YOLOv8...',
+    'Estimando keypoints por frame...',
+    'Calculando velocidad y aceleración...',
+    'Clasificando con ONNX...',
+    'Generando video con keypoints...',
+    'Casi listo...',
+  ];
+  let mi = 0;
+  const progEl = document.getElementById('progress-text');
+  const msgInterval = setInterval(() => {
+    mi = (mi + 1) % msgs.length;
+    progEl.textContent = msgs[mi];
+  }, 2500);
+
+  const fd = new FormData();
+  fd.append('video', selectedFile);
+
+  fetch('/predict', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      clearInterval(msgInterval);
+      loader.style.display = 'none';
+      if (data.error) {
+        errorBox.textContent = '⚠️  ' + data.error;
+        errorBox.style.display = 'block';
+        uploadSec.style.display = 'block';
+      } else {
+        showResult(data.result, data.kp_video_url, data.kp_download_url);
+        // Actualizar badge de alertas
+        fetch('/alerts/api/count').then(r => r.json()).then(d => {
+          document.querySelectorAll('.alert-badge').forEach(b => {
+            if (d.count > 0) { b.textContent = d.count; b.style.display = ''; }
+            else b.style.display = 'none';
+          });
+        });
+      }
+    })
+    .catch(err => {
+      clearInterval(msgInterval);
+      loader.style.display = 'none';
+      errorBox.textContent = '⚠️  Error de conexión: ' + err.message;
+      errorBox.style.display = 'block';
+      uploadSec.style.display = 'block';
+    });
+});
+
+// ── Mostrar resultado ────────────────────────────────────────────────────────
+function showResult(r, kpVideoUrl, kpDlUrl) {
+  const isAggressive = r.class_id === 1;
+  const confPct = (r.confidence * 100).toFixed(1);
+  const probs   = r.probs;
+
+  const box = document.getElementById('verdict-box');
+  box.style.background  = isAggressive ? 'rgba(239,68,68,.08)' : 'rgba(34,197,94,.08)';
+  box.style.borderColor = isAggressive ? 'rgba(239,68,68,.35)' : 'rgba(34,197,94,.35)';
+  document.getElementById('verdict-icon').textContent  = isAggressive ? '🔴' : '🟢';
+  document.getElementById('verdict-label').textContent = r.class_label.toUpperCase();
+  document.getElementById('verdict-label').style.color = isAggressive ? 'var(--danger)' : 'var(--safe)';
+  document.getElementById('verdict-conf').textContent  = `Confianza: ${confPct}%`;
+
+  const pSafe = (probs['No agresivo'] * 100).toFixed(1);
+  const pAgg  = (probs['Agresivo']    * 100).toFixed(1);
+  document.getElementById('pct-safe').textContent       = pSafe + '%';
+  document.getElementById('pct-aggressive').textContent = pAgg  + '%';
+  setTimeout(() => {
+    document.getElementById('bar-safe').style.width       = pSafe + '%';
+    document.getElementById('bar-aggressive').style.width = pAgg  + '%';
+  }, 80);
+
+  document.getElementById('meta-frames').textContent = `${r.n_frames} / ${r.total_frames}`;
+  document.getElementById('meta-fps').textContent    = r.fps + ' fps';
+  document.getElementById('meta-logit0').textContent = r.logits[0];
+  document.getElementById('meta-logit1').textContent = r.logits[1];
+
+  const diagClassMap = {
+    muy_segura:   'rgba(34,197,94,.1)',
+    confiable:    'rgba(34,197,94,.07)',
+    incierta:     'rgba(245,158,11,.1)',
+    muy_incierta: 'rgba(239,68,68,.1)',
+  };
+  const diagColorMap = {
+    muy_segura:   '#4ade80',
+    confiable:    '#86efac',
+    incierta:     '#fcd34d',
+    muy_incierta: '#fca5a5',
+  };
+  const diag = document.getElementById('diagnosis-box');
+  diag.style.background = diagClassMap[r.diagnosis_level] || 'var(--bg)';
+  diag.style.color      = diagColorMap[r.diagnosis_level] || 'var(--text)';
+  diag.textContent      = r.diagnosis_message;
+
+  // ── Video KP ─────────────────────────────────────────────────────────────
+  const kpSection = document.getElementById('kp-section');
+  const videoEl   = document.getElementById('kp-video-inline');
+  const viewBtn   = document.getElementById('kp-view-btn');
+  const dlBtn     = document.getElementById('kp-dl-btn');
+
+  if (kpVideoUrl) {
+    kpSection.style.display = 'block';
+    dlBtn.href = kpDlUrl;
+
+    let videoShown = false;
+
+    // Limpiar listeners anteriores clonando el botón
+    const newViewBtn = viewBtn.cloneNode(true);
+    viewBtn.parentNode.replaceChild(newViewBtn, viewBtn);
+
+    newViewBtn.onclick = () => {
+      if (!videoShown) {
+        videoEl.src     = kpVideoUrl;
+        videoEl.preload = 'metadata';
+        videoEl.style.display = 'block';
+        videoEl.load();
+        newViewBtn.textContent = '👁 Ocultar video';
+        videoShown = true;
+      } else {
+        videoEl.pause();
+        videoEl.removeAttribute('src');
+        videoEl.load();
+        videoEl.style.display  = 'none';
+        newViewBtn.textContent = '👁 Ver video';
+        videoShown = false;
+      }
+    };
+  } else {
+    kpSection.style.display = 'none';
+  }
+
+  resultSec.style.display = 'block';
+}
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+document.getElementById('reset-btn').addEventListener('click', () => {
+  selectedFile = null;
+  fileInput.value = '';
+  fileDisplay.textContent = '';
+  submitBtn.disabled = true;
+
+  // Limpiar preview
+  previewVid.pause();
+  previewVid.removeAttribute('src');
+  previewVid.load();
+  previewVid.style.display = 'none';
+  previewConverting.style.display = 'none';
+  previewSec.style.display = 'none';
+  const old = document.getElementById('preview-error-msg');
+  if (old) old.remove();
+  if (previewURL) { URL.revokeObjectURL(previewURL); previewURL = null; }
+
+  // Limpiar barras y video KP
+  document.getElementById('bar-safe').style.width       = '0%';
+  document.getElementById('bar-aggressive').style.width = '0%';
+
+  const v = document.getElementById('kp-video-inline');
+  v.pause();
+  v.removeAttribute('src');
+  v.load();
+  v.style.display = 'none';
+
+  const vb = document.getElementById('kp-view-btn');
+  if (vb) vb.textContent = '👁 Ver video';
+
+  document.getElementById('kp-section').style.display = 'none';
+  resultSec.style.display = 'none';
+  uploadSec.style.display = 'block';
+});
+</script>
+{% endblock %}

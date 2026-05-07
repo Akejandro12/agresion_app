@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Estadísticas — Detección Agresiva{% endblock %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <h1> Reportes y <span>Estadísticas</span></h1>
+    <p>Análisis del rendimiento del sistema y distribución de predicciones</p>
+  </div>
+
+  <div style="width:100%;max-width:960px;display:flex;flex-direction:column;gap:20px;">
+
+    <!-- KPIs -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total analizados</div>
+        <div class="stat-value" style="color:var(--accent);">{{ stats.total }}</div>
+        <div class="stat-sub">videos procesados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Agresivos detectados</div>
+        <div class="stat-value" style="color:var(--danger);">{{ stats.aggressive }}</div>
+        <div class="stat-sub">{{ stats.pct_aggressive }}% del total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">No agresivos</div>
+        <div class="stat-value" style="color:var(--safe);">{{ stats.safe }}</div>
+        <div class="stat-sub">{{ "%.1f"|format(100 - stats.pct_aggressive) }}% del total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Confianza media</div>
+        <div class="stat-value" style="color:var(--warn);">{{ stats.avg_conf }}%</div>
+        <div class="stat-sub">sobre todas las pred.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Conf. media agresivo</div>
+        <div class="stat-value" style="color:var(--danger);">{{ stats.avg_conf_agg }}%</div>
+        <div class="stat-sub">clase agresivo</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Conf. media seguro</div>
+        <div class="stat-value" style="color:var(--safe);">{{ stats.avg_conf_safe }}%</div>
+        <div class="stat-sub">clase no agresivo</div>
+      </div>
+    </div>
+
+    <!-- Gráficas -->
+    {% if stats.total > 0 %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+      <!-- Distribución de clases (dona) -->
+      <div class="card">
+        <span class="section-title">Distribución de clases</span>
+        <div style="max-width:260px;margin:0 auto;">
+          <canvas id="donut-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Modelos usados -->
+      <div class="card">
+        <span class="section-title">Modelos utilizados</span>
+        <div style="max-width:260px;margin:0 auto;">
+          <canvas id="model-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Línea temporal últimos 14 días -->
+    {% if stats.by_day %}
+    <div class="card">
+      <span class="section-title">Actividad — últimos 14 días</span>
+      <canvas id="line-chart" height="90"></canvas>
+    </div>
+    {% endif %}
+
+    <!-- Diagnósticos -->
+    {% if stats.diag_counts %}
+    <div class="card">
+      <span class="section-title">Niveles de diagnóstico de confianza</span>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        {% set total_diag = stats.total %}
+        {% for dc in stats.diag_counts %}
+        {% set pct = (dc.cnt / total_diag * 100)|round(1) if total_diag else 0 %}
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:5px;">
+            <span style="color:var(--text);">{{ dc.diagnosis_level|default('—') }}</span>
+            <span style="color:var(--muted);font-family:var(--mono);">{{ dc.cnt }} ({{ pct }}%)</span>
+          </div>
+          <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:{{ pct }}%;border-radius:4px;
+              background:{% if dc.diagnosis_level=='muy_segura' %}var(--safe){% elif dc.diagnosis_level=='confiable' %}#4ade80{% elif dc.diagnosis_level=='incierta' %}var(--warn){% else %}var(--danger){% endif %};
+              transition:width .6s;"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="card">
+      <div class="empty-state">
+        <div class="empty-icon">📈</div>
+        <p>Aún no hay datos suficientes para mostrar estadísticas.</p>
+        <a href="/" class="btn btn-primary" style="margin-top:14px;">Analizar primer video</a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if stats.total > 0 %}
+const chartDefaults = {
+  color: '#e2e8f0',
+  borderColor: '#262c3a',
+  plugins: { legend: { labels: { color: '#64748b', font: { size: 12 } } } }
+};
+Chart.defaults.color = '#e2e8f0';
+
+// Dona — distribución
+new Chart(document.getElementById('donut-chart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['No agresivo', 'Agresivo'],
+    datasets: [{ data: [{{ stats.safe }}, {{ stats.aggressive }}],
+      backgroundColor: ['rgba(34,197,94,.7)', 'rgba(239,68,68,.7)'],
+      borderColor: ['#22c55e','#ef4444'], borderWidth: 2 }]
+  },
+  options: { ...chartDefaults, cutout: '65%' }
+});
+
+// Dona — modelos
+const modelLabels = [{% for m in stats.model_counts %}'{{ m.model_type|upper }}'{% if not loop.last %},{% endif %}{% endfor %}];
+const modelData   = [{% for m in stats.model_counts %}{{ m.cnt }}{% if not loop.last %},{% endif %}{% endfor %}];
+new Chart(document.getElementById('model-chart'), {
+  type: 'doughnut',
+  data: {
+    labels: modelLabels,
+    datasets: [{ data: modelData,
+      backgroundColor: ['rgba(59,130,246,.7)','rgba(245,158,11,.7)','rgba(168,85,247,.7)'],
+      borderWidth: 2 }]
+  },
+  options: { ...chartDefaults, cutout: '65%' }
+});
+
+{% if stats.by_day %}
+// Línea — actividad diaria
+const days    = {{ stats.by_day | map(attribute='day')       | list | tojson }};
+const aggData = {{ stats.by_day | map(attribute='agresivos') | list | tojson }};
+const safData = {{ stats.by_day | map(attribute='seguros')   | list | tojson }};
+new Chart(document.getElementById('line-chart'), {
+  type: 'line',
+  data: {
+    labels: days,
+    datasets: [
+      { label: 'Agresivos', data: aggData, borderColor: '#ef4444',
+        backgroundColor: 'rgba(239,68,68,.1)', fill: true, tension: .3, pointRadius: 4 },
+      { label: 'No agresivos', data: safData, borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,.1)', fill: true, tension: .3, pointRadius: 4 },
+    ]
+  },
+  options: {
+    ...chartDefaults,
+    scales: {
+      x: { ticks: { color: '#64748b' }, grid: { color: '#262c3a' } },
+      y: { ticks: { color: '#64748b' }, grid: { color: '#262c3a' }, beginAtZero: true }
+    }
+  }
+});
+{% endif %}
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Historial — Detección Agresiva{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <h1>🕓 <span>Historial</span> de Análisis</h1>
+    <p>Registro completo de todos los videos analizados</p>
+  </div>
+
+  <div style="width:100%;max-width:960px;">
+
+    <!-- Filtros -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+      <a href="/history?filter=all"        class="btn btn-ghost btn-sm {% if filter_cls=='all' %}btn-primary{% endif %}">Todos ({{ total }})</a>
+      <a href="/history?filter=aggressive" class="btn btn-ghost btn-sm {% if filter_cls=='aggressive' %}btn-primary{% endif %}">🔴 Agresivos</a>
+      <a href="/history?filter=safe"       class="btn btn-ghost btn-sm {% if filter_cls=='safe' %}btn-primary{% endif %}">🟢 No agresivos</a>
+      <span style="flex:1"></span>
+      <span style="color:var(--muted);font-size:.8rem;">{{ total }} registro{{ 's' if total != 1 else '' }}</span>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      {% if rows %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Fecha / Hora</th>
+              <th>Archivo</th>
+              <th>Resultado</th>
+              <th>Confianza</th>
+              <th>Modelo</th>
+              <th>Frames</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            {% for r in rows %}
+            <tr id="row-{{ r.id }}">
+              <td style="color:var(--muted);font-size:.78rem;">{{ r.id }}</td>
+              <td style="font-size:.8rem;color:var(--muted);white-space:nowrap;">{{ r.timestamp }}</td>
+              <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.83rem;" title="{{ r.filename }}">{{ r.filename }}</td>
+              <td>
+                {% if r.class_id == 1 %}
+                  <span class="tag tag-aggressive">⚠ Agresivo</span>
+                {% else %}
+                  <span class="tag tag-safe">✓ No agresivo</span>
+                {% endif %}
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:60px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:{{ (r.confidence*100)|int }}%;background:{{ 'var(--danger)' if r.class_id==1 else 'var(--safe)' }};border-radius:3px;"></div>
+                  </div>
+                  <span style="font-size:.82rem;font-family:var(--mono);">{{ "%.1f"|format(r.confidence*100) }}%</span>
+                </div>
+              </td>
+              <td>
+                <span class="tag {{ 'tag-onnx' if r.model_type=='onnx' else 'tag-pt' }}">
+                  {{ r.model_type|upper }}
+                </span>
+              </td>
+              <td style="font-size:.8rem;color:var(--muted);">{{ r.n_frames }}/{{ r.total_frames }}</td>
+              <td>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                  {% if r.keypoints_video %}
+                  <button class="btn btn-ghost btn-sm" onclick="openKpVideo({{ r.id }}, this)" title="Ver video con keypoints">
+                    👁 Ver KP
+                  </button>
+                  <a href="/history/download/{{ r.id }}" class="btn btn-ghost btn-sm" title="Descargar video con keypoints">
+                    ⬇ Descargar
+                  </a>
+                  {% else %}
+                  <span style="font-size:.75rem;color:var(--muted);">Sin video KP</span>
+                  {% endif %}
+                  <button class="btn btn-danger btn-sm" onclick="deleteRow({{ r.id }})">🗑</button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🗂️</div>
+        <p>No hay registros aún. Analiza un video para comenzar.</p>
+        <a href="/" class="btn btn-primary" style="margin-top:14px;">Ir a analizar</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Paginación -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+      <a href="/history?page={{ page-1 }}&filter={{ filter_cls }}"
+         class="page-btn {% if page <= 1 %}disabled{% endif %}">‹ Anterior</a>
+      {% for p in range(1, total_pages+1) %}
+        {% if p == page %}
+          <span class="page-btn current">{{ p }}</span>
+        {% elif p <= 3 or p >= total_pages-2 or (p >= page-2 and p <= page+2) %}
+          <a href="/history?page={{ p }}&filter={{ filter_cls }}" class="page-btn">{{ p }}</a>
+        {% elif p == 4 or p == total_pages-3 %}
+          <span class="page-btn disabled">…</span>
+        {% endif %}
+      {% endfor %}
+      <a href="/history?page={{ page+1 }}&filter={{ filter_cls }}"
+         class="page-btn {% if page >= total_pages %}disabled{% endif %}">Siguiente ›</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal de video KP -->
+<div id="kp-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.8);
+     display:none;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;
+       padding:20px;max-width:800px;width:95%;position:relative;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <span style="font-weight:600;color:#fff;">Video con Keypoints</span>
+      <button onclick="closeKpModal()" class="btn btn-ghost btn-sm">✕ Cerrar</button>
+    </div>
+    <video id="kp-video-el" controls style="width:100%;border-radius:8px;background:#000;"></video>
+    <div id="kp-dl-link" style="margin-top:10px;text-align:right;"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openKpVideo(predId, btn) {
+  const modal   = document.getElementById('kp-modal');
+  const video   = document.getElementById('kp-video-el');
+  const dlLink  = document.getElementById('kp-dl-link');
+  video.src     = `/history/view/${predId}`;
+  dlLink.innerHTML = `<a href="/history/download/${predId}" class="btn btn-ghost btn-sm">⬇ Descargar</a>`;
+  modal.style.display = 'flex';
+  video.load();
+}
+function closeKpModal() {
+  const modal = document.getElementById('kp-modal');
+  modal.style.display = 'none';
+  document.getElementById('kp-video-el').pause();
+  document.getElementById('kp-video-el').src = '';
+}
+document.getElementById('kp-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeKpModal();
+});
+
+function deleteRow(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  fetch(`/history/delete/${id}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        const row = document.getElementById(`row-${id}`);
+        row.style.opacity = '0';
+        row.style.transition = 'opacity .3s';
+        setTimeout(() => row.remove(), 300);
+      }
+    });
+}
+</script>
+{% endblock %}

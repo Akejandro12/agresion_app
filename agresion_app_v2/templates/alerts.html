@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Alertas — Detección Agresiva{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <h1>🔔 Centro de <span>Alertas</span></h1>
+    <p>Notificaciones automáticas de detecciones críticas y advertencias del sistema</p>
+  </div>
+
+  <div style="width:100%;max-width:780px;">
+
+    <!-- Cabecera de acciones -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+      <div class="badge-pill">
+        <span class="dot {% if unread_count > 0 %}err{% else %}ok{% endif %}"></span>
+        {{ unread_count }} sin leer
+      </div>
+      <div class="badge-pill">
+        <span class="dot info"></span>
+        {{ alerts|length }} total
+      </div>
+      <span style="flex:1"></span>
+      {% if unread_count > 0 %}
+      <button class="btn btn-ghost btn-sm" id="mark-all-btn" onclick="markAllRead()">
+        ✓ Marcar todas como leídas
+      </button>
+      {% endif %}
+    </div>
+
+    <!-- Lista de alertas -->
+    <div id="alerts-container">
+      {% if alerts %}
+        {% for a in alerts %}
+        <div class="alert-item {{ a.level }} {% if a.read %}read-item{% endif %}" id="alert-{{ a.id }}">
+          <span class="alert-icon">
+            {% if a.level == 'critical' %}🔴
+            {% elif a.level == 'warning' %}🟠
+            {% else %}🔵{% endif %}
+          </span>
+          <div style="flex:1;">
+            <div class="alert-msg">{{ a.message }}</div>
+            <div class="alert-ts">
+              {{ a.timestamp }}
+              {% if a.filename %} &nbsp;·&nbsp; Archivo: <em>{{ a.filename }}</em>{% endif %}
+              &nbsp;·&nbsp;
+              <span class="tag {% if a.level=='critical' %}tag-aggressive{% elif a.level=='warning' %}tag-onnx{% else %}tag-pt{% endif %}"
+                    style="font-size:.68rem;">{{ a.level|upper }}</span>
+            </div>
+          </div>
+          {% if not a.read %}
+          <button class="btn btn-ghost btn-sm" onclick="markRead({{ a.id }}, this)" title="Marcar como leída">✓</button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="card">
+          <div class="empty-state">
+            <div class="empty-icon">🔕</div>
+            <p>No hay alertas. El sistema no ha detectado comportamientos críticos.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Leyenda -->
+    {% if alerts %}
+    <div class="card" style="margin-top:20px;">
+      <span class="section-title">Leyenda de alertas</span>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:.84rem;">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span style="font-size:1.1rem;">🔴</span>
+          <div>
+            <strong style="color:#fca5a5;">CRITICAL</strong>
+            <span style="color:var(--muted);"> — Comportamiento agresivo detectado con alta confianza (≥70%).</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span style="font-size:1.1rem;">🟠</span>
+          <div>
+            <strong style="color:#fcd34d;">WARNING</strong>
+            <span style="color:var(--muted);"> — Agresión detectada con confianza moderada (&lt;70%).</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span style="font-size:1.1rem;">🔵</span>
+          <div>
+            <strong style="color:#93c5fd;">INFO</strong>
+            <span style="color:var(--muted);"> — Predicción de baja confianza. Verificación manual recomendada.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function markRead(alertId, btn) {
+  fetch('/alerts/read', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ids: [alertId]})
+  }).then(r => r.json()).then(() => {
+    const item = document.getElementById(`alert-${alertId}`);
+    item.classList.add('read-item');
+    btn.remove();
+    updateBadge();
+  });
+}
+
+function markAllRead() {
+  fetch('/alerts/read', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ids: null})
+  }).then(r => r.json()).then(() => {
+    document.querySelectorAll('.alert-item').forEach(el => el.classList.add('read-item'));
+    document.querySelectorAll('.alert-item .btn').forEach(btn => btn.remove());
+    document.getElementById('mark-all-btn')?.remove();
+    updateBadge();
+  });
+}
+
+function updateBadge() {
+  fetch('/alerts/api/count').then(r=>r.json()).then(d => {
+    const badges = document.querySelectorAll('.alert-badge');
+    badges.forEach(b => {
+      if (d.count > 0) { b.textContent = d.count; b.style.display=''; }
+      else b.style.display = 'none';
+    });
+  });
+}
+</script>
+{% endblock %}

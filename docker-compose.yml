@@ -1,0 +1,15 @@
+services:
+  agresion-app:
+    build: .
+    container_name: agresion_app
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persiste la base de datos y los videos con keypoints fuera del contenedor
+      - ./data/database:/app/agresion_app/agresion_app/database
+      - ./data/kp_videos:/app/agresion_app/agresion_app/kp_videos
+      - ./data/uploads:/app/agresion_app/agresion_app/uploads
+    environment:
+      - MAIN_APP_DIR=/app/agresion_app/agresion_app
+      - ONNX_MODEL_PATH=/app/agresion_app/agresion_app/bilstm_fp32.onnx
+    restart: unless-stopped

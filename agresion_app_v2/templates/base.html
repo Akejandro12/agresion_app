@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Detección Agresiva{% endblock %}</title>
+  <style>
+    /* ── Variables (mismo estilo visual que index.html original) ───── */
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #161a23;
+      --border:    #262c3a;
+      --accent:    #3b82f6;
+      --accent2:   #1d4ed8;
+      --danger:    #ef4444;
+      --safe:      #22c55e;
+      --warn:      #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    10px;
+      --mono:      'Courier New', monospace;
+      --nav-h:     58px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Nav ─────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--nav-h);
+      background: rgba(22,26,35,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      display: flex; align-items: center;
+      padding: 0 24px; gap: 4px;
+    }
+    .nav-brand {
+      font-weight: 700; font-size: .95rem; color: #fff;
+      margin-right: 20px; letter-spacing: -.02em; white-space: nowrap;
+    }
+    .nav-brand span { color: var(--accent); }
+    .nav-links { display: flex; gap: 2px; flex: 1; }
+    .nav-link {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 7px;
+      color: var(--muted); font-size: .85rem; text-decoration: none;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .nav-link:hover { background: rgba(255,255,255,.06); color: var(--text); }
+    .nav-link.active { background: rgba(59,130,246,.15); color: var(--accent); }
+    .nav-link .icon { font-size: 1rem; }
+    .alert-badge {
+      background: var(--danger); color: #fff;
+      font-size: .68rem; font-weight: 700;
+      padding: 1px 6px; border-radius: 999px; min-width: 18px;
+      text-align: center; line-height: 1.5;
+    }
+
+    /* ── Page wrapper ────────────────────────────────────────────────── */
+    .page {
+      flex: 1;
+      padding: 32px 16px 64px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .page-header {
+      text-align: center; margin-bottom: 28px; width: 100%; max-width: 900px;
+    }
+    .page-header h1 {
+      font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; color: #fff;
+    }
+    .page-header h1 span { color: var(--accent); }
+    .page-header p { margin-top: 5px; color: var(--muted); font-size: .88rem; }
+
+    /* ── Card ────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px; width: 100%;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 7px; font-size: .85rem;
+      font-weight: 600; cursor: pointer; border: none; transition: all .18s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+    .btn-danger:hover { background: rgba(239,68,68,.25); }
+    .btn-sm { padding: 5px 10px; font-size: .78rem; border-radius: 5px; }
+
+    /* ── Badge ───────────────────────────────────────────────────────── */
+    .badge-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 999px; padding: 3px 10px;
+      color: var(--muted); font-size: .75rem;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .dot.ok   { background: var(--safe); }
+    .dot.err  { background: var(--danger); }
+    .dot.info { background: var(--accent); }
+    .dot.warn { background: var(--warn); }
+
+    /* ── Table ───────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    th {
+      text-align: left; padding: 10px 12px;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      color: var(--muted); font-size: .73rem; text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid rgba(38,44,58,.5); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ── Tags ────────────────────────────────────────────────────────── */
+    .tag {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 4px; font-size: .74rem; font-weight: 600;
+    }
+    .tag-aggressive { background: rgba(239,68,68,.15); color: #fca5a5; }
+    .tag-safe       { background: rgba(34,197,94,.15);  color: #86efac; }
+    .tag-pt         { background: rgba(59,130,246,.15); color: #93c5fd; }
+    .tag-onnx       { background: rgba(245,158,11,.15); color: #fcd34d; }
+
+    /* ── Pagination ──────────────────────────────────────────────────── */
+    .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+    .page-btn {
+      padding: 5px 12px; border-radius: 6px; font-size: .82rem;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); cursor: pointer; text-decoration: none;
+      transition: all .15s;
+    }
+    .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .page-btn.current { background: var(--accent); color: #fff; border-color: var(--accent); pointer-events: none; }
+    .page-btn.disabled { opacity: .4; pointer-events: none; }
+
+    /* ── Stat card ───────────────────────────────────────────────────── */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .stat-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 14px;
+    }
+    .stat-card .stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
+    .stat-card .stat-value { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+    .stat-card .stat-sub   { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── Alert item ──────────────────────────────────────────────────── */
+    .alert-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 16px; border-radius: 8px; margin-bottom: 8px;
+      border: 1px solid; transition: opacity .2s;
+    }
+    .alert-item.critical { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.25); }
+    .alert-item.warning  { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); }
+    .alert-item.info     { background: rgba(59,130,246,.08); border-color: rgba(59,130,246,.2); }
+    .alert-item.read-item { opacity: .5; }
+    .alert-icon { font-size: 1.3rem; flex-shrink: 0; padding-top: 2px; }
+    .alert-msg  { flex: 1; font-size: .85rem; line-height: 1.5; }
+    .alert-ts   { font-size: .73rem; color: var(--muted); margin-top: 3px; }
+
+    /* ── FAQ ─────────────────────────────────────────────────────────── */
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-q {
+      width: 100%; text-align: left; padding: 16px 0;
+      background: none; border: none; color: var(--text);
+      font-size: .9rem; font-weight: 600; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .faq-q .chevron { transition: transform .25s; color: var(--muted); }
+    .faq-item.open .chevron { transform: rotate(180deg); }
+    .faq-a {
+      display: none; padding: 0 0 16px;
+      color: var(--muted); font-size: .86rem; line-height: 1.7;
+    }
+    .faq-item.open .faq-a { display: block; }
+
+    /* ── Misc ────────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 48px 0; color: var(--muted); font-size: .9rem;
+    }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    footer.global-footer {
+      text-align: center; color: var(--muted); font-size: .73rem; padding: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: .73rem; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--muted); margin-bottom: 14px; display: block;
+    }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- ── Navegación global ──────────────────────────────────────────── -->
+  <nav>
+    <span class="nav-brand">Detección <span>Agresiva</span></span>
+    <div class="nav-links">
+      <a href="/"        class="nav-link {% if request.path == '/' %}active{% endif %}">
+        <span class="icon">🎬</span> Analizar
+      </a>
+      <a href="/history" class="nav-link {% if request.path.startswith('/history') %}active{% endif %}">
+        <span class="icon">🕓</span> Historial
+      </a>
+      <a href="/stats"   class="nav-link {% if request.path.startswith('/stats') %}active{% endif %}">
+        <span class="icon">📊</span> Estadísticas
+      </a>
+      <a href="/alerts"  class="nav-link {% if request.path.startswith('/alerts') %}active{% endif %}">
+        <span class="icon">🔔</span> Alertas
+        {% if unread_alert_count > 0 %}
+          <span class="alert-badge">{{ unread_alert_count }}</span>
+        {% endif %}
+      </a>
+      <a href="/onnx"    class="nav-link {% if request.path.startswith('/onnx') %}active{% endif %}">
+        <span class="icon">⚡</span> ONNX
+      </a>
+      <a href="/help"    class="nav-link {% if request.path.startswith('/help') %}active{% endif %}">
+        <span class="icon">❓</span> Ayuda
+      </a>
+    </div>
+  </nav>
+
+  <!-- ── Contenido de cada página ──────────────────────────────────── -->
+  {% block content %}{% endblock %}
+
+  <footer class="global-footer">
+    Sistema de Detección de Comportamiento Agresivo &nbsp;·&nbsp; Powered by YOLOv8 + BiLSTM
+  </footer>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
