@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Detección Agresiva{% endblock %}</title>
   <style>
-    /* ── Variables (mismo estilo visual que index.html original) ───── */
     :root {
       --bg:        #0d0f14;
       --surface:   #161a23;
@@ -32,32 +31,43 @@
       flex-direction: column;
     }
 
-    /* ── Nav ─────────────────────────────────────────────────────────── */
+    /* ── Nav ── */
     nav {
       position: sticky; top: 0; z-index: 100;
-      height: var(--nav-h);
-      background: rgba(22,26,35,.92);
+      min-height: var(--nav-h);
+      background: rgba(22,26,35,.96);
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(10px);
+      padding: 0 16px;
+    }
+    .nav-inner {
       display: flex; align-items: center;
-      padding: 0 24px; gap: 4px;
+      height: var(--nav-h); gap: 4px;
     }
     .nav-brand {
       font-weight: 700; font-size: .95rem; color: #fff;
-      margin-right: 20px; letter-spacing: -.02em; white-space: nowrap;
+      margin-right: 12px; letter-spacing: -.02em; white-space: nowrap;
+      flex-shrink: 0;
     }
     .nav-brand span { color: var(--accent); }
-    .nav-links { display: flex; gap: 2px; flex: 1; }
+
+    /* Links desktop */
+    .nav-links {
+      display: flex; gap: 2px; flex: 1; flex-wrap: nowrap; overflow: hidden;
+    }
     .nav-link {
       display: flex; align-items: center; gap: 6px;
-      padding: 6px 12px; border-radius: 7px;
-      color: var(--muted); font-size: 16px; text-decoration: none;
+      padding: 6px 10px; border-radius: 7px;
+      color: var(--muted); font-size: .85rem; text-decoration: none;
       transition: background .15s, color .15s;
-      white-space: nowrap;
+      white-space: nowrap; flex-shrink: 0;
     }
     .nav-link:hover { background: rgba(255,255,255,.06); color: var(--text); }
     .nav-link.active { background: rgba(59,130,246,.15); color: var(--accent); }
-    .nav-link .icon { font-size: 1px; }
+    .nav-link .icon { display: flex; align-items: center; }
+    .nav-link .icon svg { width: 18px; height: 18px; }
+    .nav-link .link-label { display: inline; }
+
     .alert-badge {
       background: var(--danger); color: #fff;
       font-size: .68rem; font-weight: 700;
@@ -65,33 +75,56 @@
       text-align: center; line-height: 1.5;
     }
 
-    /* ── Page wrapper ────────────────────────────────────────────────── */
+    /* Hamburger */
+    .nav-toggle {
+      display: none;
+      background: none; border: 1px solid var(--border);
+      border-radius: 7px; padding: 6px 8px;
+      color: var(--muted); cursor: pointer;
+      margin-left: auto; flex-shrink: 0;
+    }
+    .nav-toggle svg { width: 20px; height: 20px; display: block; }
+
+    /* Mobile drawer */
+    .nav-drawer {
+      display: none;
+      flex-direction: column; gap: 4px;
+      padding: 8px 0 14px;
+      border-top: 1px solid var(--border);
+    }
+    .nav-drawer .nav-link {
+      font-size: .9rem; padding: 10px 12px; border-radius: 8px;
+    }
+    .nav-drawer.open { display: flex; }
+
+    /* ── Page wrapper ── */
     .page {
       flex: 1;
-      padding: 32px 16px 64px;
+      padding: 28px 16px 64px;
       display: flex; flex-direction: column; align-items: center;
     }
     .page-header {
-      text-align: center; margin-bottom: 28px; width: 100%; max-width: 900px;
+      text-align: center; margin-bottom: 24px; width: 100%; max-width: 900px;
     }
     .page-header h1 {
-      font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; color: #fff;
+      font-size: clamp(1.3rem, 4vw, 1.6rem);
+      font-weight: 700; letter-spacing: -.02em; color: #fff;
     }
     .page-header h1 span { color: var(--accent); }
     .page-header p { margin-top: 5px; color: var(--muted); font-size: .88rem; }
 
-    /* ── Card ────────────────────────────────────────────────────────── */
+    /* ── Card ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 24px; width: 100%;
+      padding: 20px; width: 100%;
     }
 
-    /* ── Buttons ─────────────────────────────────────────────────────── */
+    /* ── Buttons ── */
     .btn {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 16px; border-radius: 7px; font-size: .85rem;
+      padding: 8px 14px; border-radius: 7px; font-size: .85rem;
       font-weight: 600; cursor: pointer; border: none; transition: all .18s;
       text-decoration: none;
     }
@@ -102,11 +135,11 @@
       border: 1px solid var(--border);
     }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-danger {background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+    .btn-danger { background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
     .btn-danger:hover { background: rgba(239,68,68,.25); }
     .btn-sm { padding: 5px 10px; font-size: .78rem; border-radius: 5px; }
 
-    /* ── Badge ───────────────────────────────────────────────────────── */
+    /* ── Badge ── */
     .badge-pill {
       display: inline-flex; align-items: center; gap: 5px;
       background: var(--surface); border: 1px solid var(--border);
@@ -119,20 +152,20 @@
     .dot.info { background: var(--accent); }
     .dot.warn { background: var(--warn); }
 
-    /* ── Table ───────────────────────────────────────────────────────── */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; min-width: 540px; }
     th {
       text-align: left; padding: 10px 12px;
       background: var(--bg); border-bottom: 1px solid var(--border);
       color: var(--muted); font-size: .73rem; text-transform: uppercase;
-      letter-spacing: .07em;
+      letter-spacing: .07em; white-space: nowrap;
     }
     td { padding: 10px 12px; border-bottom: 1px solid rgba(38,44,58,.5); }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(255,255,255,.02); }
 
-    /* ── Tags ────────────────────────────────────────────────────────── */
+    /* ── Tags ── */
     .tag {
       display: inline-block; padding: 2px 8px;
       border-radius: 4px; font-size: .74rem; font-weight: 600;
@@ -142,7 +175,7 @@
     .tag-pt         { background: rgba(59,130,246,.15); color: #93c5fd; }
     .tag-onnx       { background: rgba(245,158,11,.15); color: #fcd34d; }
 
-    /* ── Pagination ──────────────────────────────────────────────────── */
+    /* ── Pagination ── */
     .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
     .page-btn {
       padding: 5px 12px; border-radius: 6px; font-size: .82rem;
@@ -154,39 +187,39 @@
     .page-btn.current { background: var(--accent); color: #fff; border-color: var(--accent); pointer-events: none; }
     .page-btn.disabled { opacity: .4; pointer-events: none; }
 
-    /* ── Stat card ───────────────────────────────────────────────────── */
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    /* ── Stat card ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
     .stat-card {
       background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px 14px;
+      border-radius: 8px; padding: 14px 12px;
     }
     .stat-card .stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 6px; }
-    .stat-card .stat-value { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+    .stat-card .stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
     .stat-card .stat-sub   { font-size: .78rem; color: var(--muted); margin-top: 4px; }
 
-    /* ── Alert item ──────────────────────────────────────────────────── */
+    /* ── Alert item ── */
     .alert-item {
       display: flex; align-items: flex-start; gap: 12px;
-      padding: 14px 16px; border-radius: 8px; margin-bottom: 8px;
+      padding: 12px 14px; border-radius: 8px; margin-bottom: 8px;
       border: 1px solid; transition: opacity .2s;
     }
     .alert-item.critical { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.25); }
     .alert-item.warning  { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); }
     .alert-item.info     { background: rgba(59,130,246,.08); border-color: rgba(59,130,246,.2); }
     .alert-item.read-item { opacity: .5; }
-    .alert-icon { font-size: 1.3rem; flex-shrink: 0; padding-top: 2px; }
-    .alert-msg  { flex: 1; font-size: .85rem; line-height: 1.5; }
-    .alert-ts   { font-size: .73rem; color: var(--muted); margin-top: 3px; }
+    .alert-icon { font-size: 1.2rem; flex-shrink: 0; padding-top: 2px; }
+    .alert-msg  { flex: 1; font-size: .85rem; line-height: 1.5; min-width: 0; }
+    .alert-ts   { font-size: .73rem; color: var(--muted); margin-top: 3px; word-break: break-word; }
 
-    /* ── FAQ ─────────────────────────────────────────────────────────── */
+    /* ── FAQ ── */
     .faq-item { border-bottom: 1px solid var(--border); }
     .faq-q {
       width: 100%; text-align: left; padding: 16px 0;
       background: none; border: none; color: var(--text);
       font-size: .9rem; font-weight: 600; cursor: pointer;
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
     }
-    .faq-q .chevron { transition: transform .25s; color: var(--muted); }
+    .faq-q .chevron { transition: transform .25s; color: var(--muted); flex-shrink: 0; }
     .faq-item.open .chevron { transform: rotate(180deg); }
     .faq-a {
       display: none; padding: 0 0 16px;
@@ -194,56 +227,142 @@
     }
     .faq-item.open .faq-a { display: block; }
 
-    /* ── Misc ────────────────────────────────────────────────────────── */
+    /* ── Misc ── */
     .empty-state {
-      text-align: center; padding: 48px 0; color: var(--muted); font-size: .9rem;
+      text-align: center; padding: 40px 16px; color: var(--muted); font-size: .9rem;
     }
     .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
     footer.global-footer {
-      text-align: center; color: var(--muted); font-size: .73rem; padding: 20px;
-      border-top: 1px solid var(--border);
+      text-align: center; color: var(--muted); font-size: .73rem;
+      padding: 16px; border-top: 1px solid var(--border);
     }
     .section-title {
       font-size: .73rem; text-transform: uppercase; letter-spacing: .08em;
       color: var(--muted); margin-bottom: 14px; display: block;
     }
     .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    /* ── Responsive breakpoints ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .nav-toggle { display: flex; align-items: center; }
+
+      .page { padding: 20px 12px 56px; }
+      .card { padding: 16px; }
+
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+
+      .btn { padding: 8px 12px; font-size: .82rem; }
+      .btn-sm { padding: 5px 8px; font-size: .76rem; }
+
+      .alert-item { gap: 8px; padding: 10px 12px; }
+      .alert-icon { font-size: 1rem; }
+    }
+
+    @media (max-width: 400px) {
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .nav-brand { font-size: .85rem; }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-  <!-- ── Navegación global ──────────────────────────────────────────── -->
+  <!-- ── Navegación global ── -->
   <nav>
-    <span class="nav-brand">Detección <span>Agresiva</span></span>
-    <div class="nav-links">
+    <div class="nav-inner">
+      <span class="nav-brand">Detección <span>Agresiva</span></span>
+
+      <!-- Links visibles en desktop -->
+      <div class="nav-links">
+        <a href="/"        class="nav-link {% if request.path == '/' %}active{% endif %}">
+          <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg></span>
+          <span class="link-label">Analizar</span>
+        </a>
+        <a href="/history" class="nav-link {% if request.path.startswith('/history') %}active{% endif %}">
+          <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg></span>
+          <span class="link-label">Historial</span>
+        </a>
+        <a href="/stats"   class="nav-link {% if request.path.startswith('/stats') %}active{% endif %}">
+          <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 2a4 4 0 1 1 -3.843 5.114l-6.295 .786a3 3 0 0 1 -.094 .257l6.446 4.431a3 3 0 1 1 -.695 4.099l-3.527 1.058q .008 .127 .008 .255a4 4 0 1 1 -8 0l.005 -.2a4 4 0 0 1 7.366 -1.954l3.64 -1.094l.01 -.102q .023 -.204 .074 -.4l-6.688 -4.6a3 3 0 0 1 -4.407 -2.65l.005 -.176a3 3 0 0 1 5.784 -.931l6.312 -.79a4 4 0 0 1 3.899 -3.103"/></svg></span>
+          <span class="link-label">Estadísticas</span>
+        </a>
+        <a href="/alerts"  class="nav-link {% if request.path.startswith('/alerts') %}active{% endif %}">
+          <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 1.67c.955 0 1.845 .467 2.39 1.247l.105 .16l8.114 13.548a2.914 2.914 0 0 1 -2.307 4.363l-.195 .008h-16.225a2.914 2.914 0 0 1 -2.582 -4.2l.099 -.185l8.11 -13.538a2.914 2.914 0 0 1 2.491 -1.403zm.01 13.33l-.127 .007a1 1 0 0 0 0 1.986l.117 .007l.127 -.007a1 1 0 0 0 0 -1.986l-.117 -.007zm-.01 -7a1 1 0 0 0 -.993 .883l-.007 .117v4l.007 .117a1 1 0 0 0 1.986 0l.007 -.117v-4l-.007 -.117a1 1 0 0 0 -.993 -.883z"/></svg></span>
+          <span class="link-label">Alertas</span>
+          {% if unread_alert_count > 0 %}
+            <span class="alert-badge">{{ unread_alert_count }}</span>
+          {% endif %}
+        </a>
+        <a href="/help"    class="nav-link {% if request.path.startswith('/help') %}active{% endif %}">
+          <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 3.34a10 10 0 1 1 -10 17.32a10 10 0 0 1 10 -17.32m-5 12.66a1 1 0 0 0 -.993 .883l-.007 .127a1 1 0 0 0 1.993 .117l.007 -.127a1 1 0 0 0 -1 -1m1.173 -9.856a3.6 3.6 0 0 0 -3.97 1.252a1 1 0 0 0 1.512 1.304l.082 -.096a1.6 1.6 0 1 1 1.846 2.462a2.49 2.49 0 0 0 -1.641 2.49a1 1 0 0 0 1.996 .004v-.117a.5 .5 0 0 1 .259 -.466l.075 -.034a3.61 3.61 0 0 0 2.338 -3.47a3.6 3.6 0 0 0 -2.497 -3.329"/></svg></span>
+          <span class="link-label">Ayuda</span>
+        </a>
+      </div>
+
+      <!-- Botón hamburguesa (solo móvil) -->
+      <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menú">
+        <svg id="icon-menu" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        <svg id="icon-close" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6"  y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Drawer móvil -->
+    <div class="nav-drawer" id="nav-drawer">
       <a href="/"        class="nav-link {% if request.path == '/' %}active{% endif %}">
-        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg></span> Analizar
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg></span> Analizar
       </a>
       <a href="/history" class="nav-link {% if request.path.startswith('/history') %}active{% endif %}">
-        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-history"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M12 8l0 4l2 2" /><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5" /></svg></span> Historial
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg></span> Historial
       </a>
       <a href="/stats"   class="nav-link {% if request.path.startswith('/stats') %}active{% endif %}">
-        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-chart-dots-3"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M18 2a4 4 0 1 1 -3.843 5.114l-6.295 .786a3 3 0 0 1 -.094 .257l6.446 4.431a3 3 0 1 1 -.695 4.099l-3.527 1.058q .008 .127 .008 .255a4 4 0 1 1 -8 0l.005 -.2a4 4 0 0 1 7.366 -1.954l3.64 -1.094l.01 -.102q .023 -.204 .074 -.4l-6.688 -4.6a3 3 0 0 1 -4.407 -2.65l.005 -.176a3 3 0 0 1 5.784 -.931l6.312 -.79a4 4 0 0 1 3.899 -3.103" /></svg></span> Estadísticas
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 2a4 4 0 1 1 -3.843 5.114l-6.295 .786a3 3 0 0 1 -.094 .257l6.446 4.431a3 3 0 1 1 -.695 4.099l-3.527 1.058q .008 .127 .008 .255a4 4 0 1 1 -8 0l.005 -.2a4 4 0 0 1 7.366 -1.954l3.64 -1.094l.01 -.102q .023 -.204 .074 -.4l-6.688 -4.6a3 3 0 0 1 -4.407 -2.65l.005 -.176a3 3 0 0 1 5.784 -.931l6.312 -.79a4 4 0 0 1 3.899 -3.103"/></svg></span> Estadísticas
       </a>
       <a href="/alerts"  class="nav-link {% if request.path.startswith('/alerts') %}active{% endif %}">
-        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-alert-triangle"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M12 1.67c.955 0 1.845 .467 2.39 1.247l.105 .16l8.114 13.548a2.914 2.914 0 0 1 -2.307 4.363l-.195 .008h-16.225a2.914 2.914 0 0 1 -2.582 -4.2l.099 -.185l8.11 -13.538a2.914 2.914 0 0 1 2.491 -1.403zm.01 13.33l-.127 .007a1 1 0 0 0 0 1.986l.117 .007l.127 -.007a1 1 0 0 0 0 -1.986l-.117 -.007zm-.01 -7a1 1 0 0 0 -.993 .883l-.007 .117v4l.007 .117a1 1 0 0 0 1.986 0l.007 -.117v-4l-.007 -.117a1 1 0 0 0 -.993 -.883z" /></svg></span> Alertas
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 1.67c.955 0 1.845 .467 2.39 1.247l.105 .16l8.114 13.548a2.914 2.914 0 0 1 -2.307 4.363l-.195 .008h-16.225a2.914 2.914 0 0 1 -2.582 -4.2l.099 -.185l8.11 -13.538a2.914 2.914 0 0 1 2.491 -1.403zm.01 13.33l-.127 .007a1 1 0 0 0 0 1.986l.117 .007l.127 -.007a1 1 0 0 0 0 -1.986l-.117 -.007zm-.01 -7a1 1 0 0 0 -.993 .883l-.007 .117v4l.007 .117a1 1 0 0 0 1.986 0l.007 -.117v-4l-.007 -.117a1 1 0 0 0 -.993 -.883z"/></svg></span> Alertas
         {% if unread_alert_count > 0 %}
           <span class="alert-badge">{{ unread_alert_count }}</span>
         {% endif %}
       </a>
       <a href="/help"    class="nav-link {% if request.path.startswith('/help') %}active{% endif %}">
-        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-help"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M17 3.34a10 10 0 1 1 -10 17.32a10 10 0 0 1 10 -17.32m-5 12.66a1 1 0 0 0 -.993 .883l-.007 .127a1 1 0 0 0 1.993 .117l.007 -.127a1 1 0 0 0 -1 -1m1.173 -9.856a3.6 3.6 0 0 0 -3.97 1.252a1 1 0 0 0 1.512 1.304l.082 -.096a1.6 1.6 0 1 1 1.846 2.462a2.49 2.49 0 0 0 -1.641 2.49a1 1 0 0 0 1.996 .004v-.117a.5 .5 0 0 1 .259 -.466l.075 -.034a3.61 3.61 0 0 0 2.338 -3.47a3.6 3.6 0 0 0 -2.497 -3.329" /></svg></span> Ayuda
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 3.34a10 10 0 1 1 -10 17.32a10 10 0 0 1 10 -17.32m-5 12.66a1 1 0 0 0 -.993 .883l-.007 .127a1 1 0 0 0 1.993 .117l.007 -.127a1 1 0 0 0 -1 -1m1.173 -9.856a3.6 3.6 0 0 0 -3.97 1.252a1 1 0 0 0 1.512 1.304l.082 -.096a1.6 1.6 0 1 1 1.846 2.462a2.49 2.49 0 0 0 -1.641 2.49a1 1 0 0 0 1.996 .004v-.117a.5 .5 0 0 1 .259 -.466l.075 -.034a3.61 3.61 0 0 0 2.338 -3.47a3.6 3.6 0 0 0 -2.497 -3.329"/></svg></span> Ayuda
       </a>
     </div>
   </nav>
 
-  <!-- ── Contenido de cada página ──────────────────────────────────── -->
+  <!-- ── Contenido de cada página ── -->
   {% block content %}{% endblock %}
 
   <footer class="global-footer">
     Sistema de Detección de Comportamiento Agresivo &nbsp;·&nbsp; Powered by YOLOv8 + BiLSTM
   </footer>
+
+  <script>
+    const toggle = document.getElementById('nav-toggle');
+    const drawer = document.getElementById('nav-drawer');
+    const iconMenu  = document.getElementById('icon-menu');
+    const iconClose = document.getElementById('icon-close');
+    toggle.addEventListener('click', () => {
+      const open = drawer.classList.toggle('open');
+      iconMenu.style.display  = open ? 'none'  : 'block';
+      iconClose.style.display = open ? 'block' : 'none';
+    });
+    // Cerrar drawer al hacer clic en un link
+    drawer.querySelectorAll('.nav-link').forEach(l => {
+      l.addEventListener('click', () => {
+        drawer.classList.remove('open');
+        iconMenu.style.display  = 'block';
+        iconClose.style.display = 'none';
+      });
+    });
+  </script>
 
   {% block extra_js %}{% endblock %}
 </body>

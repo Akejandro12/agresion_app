@@ -1,5 +1,0 @@
-# Dependencias adicionales a las del sistema principal
-# El sistema principal ya requiere: flask, torch, ultralytics, opencv-python-headless, numpy, scipy, tqdm
-
-# Para la inferencia ONNX (opcional, solo si usas /onnx)
-onnxruntime>=1.16.0

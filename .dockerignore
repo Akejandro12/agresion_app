@@ -6,3 +6,7 @@ data/
 *.zip
 *.log
 *.exe
+.git
+.gitignore
+venv
+.venv

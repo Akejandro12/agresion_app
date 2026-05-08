@@ -1,30 +1,61 @@
 FROM python:3.11-slim
 
-# Dependencias del sistema para OpenCV y ffmpeg
+# ─────────────────────────────────────────────────────────────
+# Variables de entorno
+# ─────────────────────────────────────────────────────────────
+ENV PYTHONUNBUFFERED=1
+
+# ─────────────────────────────────────────────────────────────
+# Dependencias del sistema
+# ─────────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    git \
+    build-essential \
     libglib2.0-0 \
     libgl1 \
     libsm6 \
     libxext6 \
-    ffmpeg \
+    libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# ─────────────────────────────────────────────────────────────
+# Directorio principal
+# ─────────────────────────────────────────────────────────────
 WORKDIR /app
 
-# Copiar e instalar dependencias primero (aprovecha caché de Docker)
-COPY agresion_app/agresion_app/requirements.txt ./requirements.txt
-COPY agresion_app_v2/requirements_extended.txt ./requirements_extended.txt
+# ─────────────────────────────────────────────────────────────
+# Copiar requirements primero (mejor caché)
+# ─────────────────────────────────────────────────────────────
+COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt \
- && pip install --no-cache-dir -r requirements_extended.txt
+# ─────────────────────────────────────────────────────────────
+# Actualizar pip
+# ─────────────────────────────────────────────────────────────
+RUN pip install --upgrade pip
 
-# Copiar todo el proyecto
-COPY agresion_app/   ./agresion_app/
+# ─────────────────────────────────────────────────────────────
+# Instalar dependencias Python
+# ─────────────────────────────────────────────────────────────
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ─────────────────────────────────────────────────────────────
+# Copiar proyecto
+# ─────────────────────────────────────────────────────────────
+COPY agresion_app/ ./agresion_app/
 COPY agresion_app_v2/ ./agresion_app_v2/
 
-# Directorio de trabajo donde arranca la app extendida
+# ─────────────────────────────────────────────────────────────
+# Directorio donde arranca Flask
+# ─────────────────────────────────────────────────────────────
 WORKDIR /app/agresion_app_v2
 
+# ─────────────────────────────────────────────────────────────
+# Puerto Flask/Gunicorn
+# ─────────────────────────────────────────────────────────────
 EXPOSE 5000
 
-CMD ["python", "app_extended.py"]
+# ─────────────────────────────────────────────────────────────
+# Producción con Gunicorn
+# ─────────────────────────────────────────────────────────────
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "app_extended:app"]

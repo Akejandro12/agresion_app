@@ -1,47 +1,154 @@
 {% extends "base.html" %}
 {% block title %}Historial — Detección Agresiva{% endblock %}
 
+{% block extra_head %}
+<style>
+  .history-wrapper { width: 100%; max-width: 960px; }
+
+  /* ── Filtros ── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .filter-bar .count-label {
+    color: var(--muted);
+    font-size: .8rem;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ── Tabla ── */
+  .table-card { padding: 0; overflow: hidden; }
+
+  /* Columna archivo: ellipsis */
+  .col-file {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .83rem;
+  }
+  /* Columna acciones: botones en fila */
+  .row-actions {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Barra de confianza */
+  .conf-bar-wrap {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .conf-bar-track {
+    width: 52px; height: 5px;
+    background: var(--bg); border-radius: 3px; overflow: hidden;
+    flex-shrink: 0;
+  }
+  .conf-bar-fill { height: 100%; border-radius: 3px; }
+  .conf-val { font-size: .82rem; font-family: var(--mono); white-space: nowrap; }
+
+  /* ── Modal de video KP ── */
+  #kp-modal {
+    display: none;
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.82);
+    align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  #kp-modal.open { display: flex; }
+  .kp-modal-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%; max-width: 800px;
+    position: relative;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+  .kp-modal-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 14px;
+    gap: 12px;
+  }
+  .kp-modal-title { font-weight: 600; color: #fff; font-size: .95rem; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    /* Ocultar columnas menos importantes */
+    .col-id,
+    .col-frames,
+    .col-model { display: none; }
+
+    .col-file { max-width: 100px; font-size: .8rem; }
+    .conf-bar-track { width: 36px; }
+    .conf-val { font-size: .78rem; }
+
+    td, th { padding: 9px 8px; }
+
+    .row-actions { gap: 4px; }
+    .row-actions .btn-sm { padding: 4px 7px; font-size: .74rem; }
+
+    .filter-bar { gap: 6px; }
+    .filter-bar .btn-sm { font-size: .78rem; padding: 5px 9px; }
+    .filter-bar .count-label { width: 100%; margin-left: 0; text-align: right; }
+
+    .kp-modal-inner { padding: 14px; border-radius: 10px; }
+    .kp-modal-title { font-size: .88rem; }
+  }
+
+  @media (max-width: 400px) {
+    /* En pantallas muy pequeñas ocultar también fecha completa */
+    .col-ts { font-size: .75rem; }
+    .col-file { max-width: 80px; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page">
   <div class="page-header">
-    <h1> <span>Historial</span> de Análisis</h1>
+    <h1><span>Historial</span> de Análisis</h1>
     <p>Registro completo de todos los videos analizados</p>
   </div>
 
-  <div style="width:100%;max-width:960px;">
+  <div class="history-wrapper">
 
     <!-- Filtros -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+    <div class="filter-bar">
       <a href="/history?filter=all"        class="btn btn-ghost btn-sm {% if filter_cls=='all' %}btn-primary{% endif %}">Todos ({{ total }})</a>
       <a href="/history?filter=aggressive" class="btn btn-ghost btn-sm {% if filter_cls=='aggressive' %}btn-primary{% endif %}">🔴 Agresivos</a>
       <a href="/history?filter=safe"       class="btn btn-ghost btn-sm {% if filter_cls=='safe' %}btn-primary{% endif %}">🟢 No agresivos</a>
-      <span style="flex:1"></span>
-      <span style="color:var(--muted);font-size:.8rem;">{{ total }} registro{{ 's' if total != 1 else '' }}</span>
+      <span class="count-label">{{ total }} registro{{ 's' if total != 1 else '' }}</span>
     </div>
 
     <!-- Tabla -->
-    <div class="card" style="padding:0;overflow:hidden;">
+    <div class="card table-card">
       {% if rows %}
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Fecha / Hora</th>
+              <th class="col-id">#</th>
+              <th class="col-ts">Fecha / Hora</th>
               <th>Archivo</th>
               <th>Resultado</th>
               <th>Confianza</th>
-              <th>Modelo</th>
-              <th>Frames</th>
+              <th class="col-model">Modelo</th>
+              <th class="col-frames">Frames</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="history-body">
             {% for r in rows %}
             <tr id="row-{{ r.id }}">
-              <td style="color:var(--muted);font-size:.78rem;">{{ r.id }}</td>
-              <td style="font-size:.8rem;color:var(--muted);white-space:nowrap;">{{ r.timestamp }}</td>
-              <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.83rem;" title="{{ r.filename }}">{{ r.filename }}</td>
+              <td class="col-id" style="color:var(--muted);font-size:.78rem;">{{ r.id }}</td>
+              <td class="col-ts" style="font-size:.8rem;color:var(--muted);white-space:nowrap;">{{ r.timestamp }}</td>
+              <td class="col-file" title="{{ r.filename }}">{{ r.filename }}</td>
               <td>
                 {% if r.class_id == 1 %}
                   <span class="tag tag-aggressive">⚠ Agresivo</span>
@@ -50,32 +157,36 @@
                 {% endif %}
               </td>
               <td>
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <div style="width:60px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;">
-                    <div style="height:100%;width:{{ (r.confidence*100)|int }}%;background:{{ 'var(--danger)' if r.class_id==1 else 'var(--safe)' }};border-radius:3px;"></div>
+                <div class="conf-bar-wrap">
+                  <div class="conf-bar-track">
+                    <div class="conf-bar-fill"
+                         style="width:{{ (r.confidence*100)|int }}%;
+                                background:{{ 'var(--danger)' if r.class_id==1 else 'var(--safe)' }};"></div>
                   </div>
-                  <span style="font-size:.82rem;font-family:var(--mono);">{{ "%.1f"|format(r.confidence*100) }}%</span>
+                  <span class="conf-val">{{ "%.1f"|format(r.confidence*100) }}%</span>
                 </div>
               </td>
-              <td>
+              <td class="col-model">
                 <span class="tag {{ 'tag-onnx' if r.model_type=='onnx' else 'tag-pt' }}">
                   {{ r.model_type|upper }}
                 </span>
               </td>
-              <td style="font-size:.8rem;color:var(--muted);">{{ r.n_frames }}/{{ r.total_frames }}</td>
+              <td class="col-frames" style="font-size:.8rem;color:var(--muted);">{{ r.n_frames }}/{{ r.total_frames }}</td>
               <td>
-                <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                <div class="row-actions">
                   {% if r.keypoints_video %}
-                  <button class="btn btn-ghost btn-sm" onclick="openKpVideo({{ r.id }}, this)" title="Ver video con keypoints">
-                    👁 Ver KP
+                  <button class="btn btn-ghost btn-sm" onclick="openKpVideo({{ r.id }})" title="Ver video con keypoints">
+                    👁 Ver
                   </button>
-                  <a href="/history/download/{{ r.id }}" class="btn btn-ghost btn-sm" title="Descargar video con keypoints">
-                    ⬇ Descargar
+                  <a href="/history/download/{{ r.id }}" class="btn btn-ghost btn-sm" title="Descargar">
+                    ⬇
                   </a>
                   {% else %}
-                  <span style="font-size:.75rem;color:var(--muted);">Sin video KP</span>
+                  <span style="font-size:.75rem;color:var(--muted);">Sin KP</span>
                   {% endif %}
-                  <button class="btn btn-danger btn-sm" onclick="deleteRow({{ r.id }})"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 22 22" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-trash-x"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M20 6a1 1 0 0 1 .117 1.993l-.117 .007h-.081l-.919 11a3 3 0 0 1 -2.824 2.995l-.176 .005h-8c-1.598 0 -2.904 -1.249 -2.992 -2.75l-.005 -.167l-.923 -11.083h-.08a1 1 0 0 1 -.117 -1.993l.117 -.007h16zm-9.489 5.14a1 1 0 0 0 -1.218 1.567l1.292 1.293l-1.292 1.293l-.083 .094a1 1 0 0 0 1.497 1.32l1.293 -1.292l1.293 1.292l.094 .083a1 1 0 0 0 1.32 -1.497l-1.292 -1.293l1.292 -1.293l.083 -.094a1 1 0 0 0 -1.497 -1.32l-1.293 1.292l-1.293 -1.292l-.094 -.083z" /><path d="M14 2a2 2 0 0 1 2 2a1 1 0 0 1 -1.993 .117l-.007 -.117h-4l-.007 .117a1 1 0 0 1 -1.993 -.117a2 2 0 0 1 1.85 -1.995l.15 -.005h4z" /></svg></button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteRow({{ r.id }})" title="Eliminar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 22 22" fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 6a1 1 0 0 1 .117 1.993l-.117 .007h-.081l-.919 11a3 3 0 0 1 -2.824 2.995l-.176 .005h-8c-1.598 0 -2.904 -1.249 -2.992 -2.75l-.005 -.167l-.923 -11.083h-.08a1 1 0 0 1 -.117 -1.993l.117 -.007h16zm-9.489 5.14a1 1 0 0 0 -1.218 1.567l1.292 1.293l-1.292 1.293l-.083 .094a1 1 0 0 0 1.497 1.32l1.293 -1.292l1.293 1.292l.094 .083a1 1 0 0 0 1.32 -1.497l-1.292 -1.293l1.292 -1.293l.083 -.094a1 1 0 0 0 -1.497 -1.32l-1.293 1.292l-1.293 -1.292l-.094 -.083z"/><path d="M14 2a2 2 0 0 1 2 2a1 1 0 0 1 -1.993 .117l-.007 -.117h-4l-.007 .117a1 1 0 0 1 -1.993 -.117a2 2 0 0 1 1.85 -1.995l.15 -.005h4z"/></svg>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -110,19 +221,19 @@
          class="page-btn {% if page >= total_pages %}disabled{% endif %}">Siguiente ›</a>
     </div>
     {% endif %}
-  </div>
-</div>
 
-<!-- Modal de video KP -->
-<div id="kp-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.8);
-     display:none;align-items:center;justify-content:center;">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;
-       padding:20px;max-width:800px;width:95%;position:relative;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <span style="font-weight:600;color:#fff;">Video con Keypoints</span>
+  </div><!-- /.history-wrapper -->
+</div><!-- /.page -->
+
+<!-- ── Modal de video KP ── -->
+<div id="kp-modal" role="dialog" aria-modal="true" aria-label="Video con Keypoints">
+  <div class="kp-modal-inner">
+    <div class="kp-modal-header">
+      <span class="kp-modal-title">🎞 Video con Keypoints</span>
       <button onclick="closeKpModal()" class="btn btn-ghost btn-sm">✕ Cerrar</button>
     </div>
-    <video id="kp-video-el" controls style="width:100%;border-radius:8px;background:#000;"></video>
+    <video id="kp-video-el" controls
+           style="width:100%;border-radius:8px;background:#000;max-height:65vh;display:block;"></video>
     <div id="kp-dl-link" style="margin-top:10px;text-align:right;"></div>
   </div>
 </div>
@@ -130,23 +241,31 @@
 
 {% block extra_js %}
 <script>
-function openKpVideo(predId, btn) {
-  const modal   = document.getElementById('kp-modal');
-  const video   = document.getElementById('kp-video-el');
-  const dlLink  = document.getElementById('kp-dl-link');
-  video.src     = `/history/view/${predId}`;
+function openKpVideo(predId) {
+  const modal  = document.getElementById('kp-modal');
+  const video  = document.getElementById('kp-video-el');
+  const dlLink = document.getElementById('kp-dl-link');
+  video.src    = `/history/view/${predId}`;
   dlLink.innerHTML = `<a href="/history/download/${predId}" class="btn btn-ghost btn-sm">⬇ Descargar</a>`;
-  modal.style.display = 'flex';
+  modal.classList.add('open');
   video.load();
 }
+
 function closeKpModal() {
   const modal = document.getElementById('kp-modal');
-  modal.style.display = 'none';
-  document.getElementById('kp-video-el').pause();
-  document.getElementById('kp-video-el').src = '';
+  modal.classList.remove('open');
+  const v = document.getElementById('kp-video-el');
+  v.pause(); v.src = '';
 }
+
+// Cerrar al hacer clic en el fondo
 document.getElementById('kp-modal').addEventListener('click', function(e) {
   if (e.target === this) closeKpModal();
+});
+
+// Cerrar con Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeKpModal();
 });
 
 function deleteRow(id) {
@@ -156,8 +275,8 @@ function deleteRow(id) {
     .then(d => {
       if (d.ok) {
         const row = document.getElementById(`row-${id}`);
-        row.style.opacity = '0';
         row.style.transition = 'opacity .3s';
+        row.style.opacity = '0';
         setTimeout(() => row.remove(), 300);
       }
     });

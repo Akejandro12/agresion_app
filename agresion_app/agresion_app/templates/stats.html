@@ -2,12 +2,47 @@
 {% block title %}Estadísticas — Detección Agresiva{% endblock %}
 {% block extra_head %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* ── Grid de gráficas: 2 cols desktop → 1 col mobile ── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .chart-inner {
+    max-width: 260px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 640px) {
+    /* KPIs: ya heredan stat-grid de base.html (auto-fill minmax 140px)
+       En móvil forzamos 2 columnas fijas para que no queden muy angostas */
+    .stat-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Gráficas apiladas verticalmente */
+    .charts-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-inner {
+      max-width: 220px;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .stat-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="page">
   <div class="page-header">
-    <h1> Reportes y <span>Estadísticas</span></h1>
+    <h1>Reportes y <span>Estadísticas</span></h1>
     <p>Análisis del rendimiento del sistema y distribución de predicciones</p>
   </div>
 
@@ -47,32 +82,33 @@
       </div>
     </div>
 
-    <!-- Gráficas -->
     {% if stats.total > 0 %}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
 
-      <!-- Distribución de clases (dona) -->
+    <!-- Gráficas: dona + modelos -->
+    <div class="charts-grid">
       <div class="card">
         <span class="section-title">Distribución de clases</span>
-        <div style="max-width:260px;margin:0 auto;">
+        <div class="chart-inner">
           <canvas id="donut-chart"></canvas>
         </div>
       </div>
-
-      <!-- Modelos usados -->
       <div class="card">
         <span class="section-title">Modelos utilizados</span>
-        <div style="max-width:260px;margin:0 auto;">
+        <div class="chart-inner">
           <canvas id="model-chart"></canvas>
         </div>
       </div>
     </div>
 
-    <!-- Línea temporal últimos 14 días -->
+    <!-- Línea temporal -->
     {% if stats.by_day %}
     <div class="card">
       <span class="section-title">Actividad — últimos 14 días</span>
-      <canvas id="line-chart" height="90"></canvas>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div style="min-width:320px;">
+          <canvas id="line-chart" height="90"></canvas>
+        </div>
+      </div>
     </div>
     {% endif %}
 
@@ -85,7 +121,7 @@
         {% for dc in stats.diag_counts %}
         {% set pct = (dc.cnt / total_diag * 100)|round(1) if total_diag else 0 %}
         <div>
-          <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:5px;">
+          <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:5px;flex-wrap:wrap;gap:4px;">
             <span style="color:var(--text);">{{ dc.diagnosis_level|default('—') }}</span>
             <span style="color:var(--muted);font-family:var(--mono);">{{ dc.cnt }} ({{ pct }}%)</span>
           </div>
@@ -117,41 +153,43 @@
 {% block extra_js %}
 <script>
 {% if stats.total > 0 %}
-const chartDefaults = {
-  color: '#e2e8f0',
-  borderColor: '#262c3a',
-  plugins: { legend: { labels: { color: '#64748b', font: { size: 12 } } } }
-};
 Chart.defaults.color = '#e2e8f0';
 
-// Dona — distribución
+const dOpts = {
+  cutout: '65%',
+  plugins: { legend: { labels: { color: '#64748b', font: { size: 12 } } } }
+};
+
 new Chart(document.getElementById('donut-chart'), {
   type: 'doughnut',
   data: {
     labels: ['No agresivo', 'Agresivo'],
-    datasets: [{ data: [{{ stats.safe }}, {{ stats.aggressive }}],
+    datasets: [{
+      data: [{{ stats.safe }}, {{ stats.aggressive }}],
       backgroundColor: ['rgba(34,197,94,.7)', 'rgba(239,68,68,.7)'],
-      borderColor: ['#22c55e','#ef4444'], borderWidth: 2 }]
+      borderColor: ['#22c55e', '#ef4444'],
+      borderWidth: 2
+    }]
   },
-  options: { ...chartDefaults, cutout: '65%' }
+  options: dOpts
 });
 
-// Dona — modelos
 const modelLabels = [{% for m in stats.model_counts %}'{{ m.model_type|upper }}'{% if not loop.last %},{% endif %}{% endfor %}];
 const modelData   = [{% for m in stats.model_counts %}{{ m.cnt }}{% if not loop.last %},{% endif %}{% endfor %}];
 new Chart(document.getElementById('model-chart'), {
   type: 'doughnut',
   data: {
     labels: modelLabels,
-    datasets: [{ data: modelData,
-      backgroundColor: ['rgba(59,130,246,.7)','rgba(245,158,11,.7)','rgba(168,85,247,.7)'],
-      borderWidth: 2 }]
+    datasets: [{
+      data: modelData,
+      backgroundColor: ['rgba(59,130,246,.7)', 'rgba(245,158,11,.7)', 'rgba(168,85,247,.7)'],
+      borderWidth: 2
+    }]
   },
-  options: { ...chartDefaults, cutout: '65%' }
+  options: dOpts
 });
 
 {% if stats.by_day %}
-// Línea — actividad diaria
 const days    = {{ stats.by_day | map(attribute='day')       | list | tojson }};
 const aggData = {{ stats.by_day | map(attribute='agresivos') | list | tojson }};
 const safData = {{ stats.by_day | map(attribute='seguros')   | list | tojson }};
@@ -160,18 +198,37 @@ new Chart(document.getElementById('line-chart'), {
   data: {
     labels: days,
     datasets: [
-      { label: 'Agresivos', data: aggData, borderColor: '#ef4444',
-        backgroundColor: 'rgba(239,68,68,.1)', fill: true, tension: .3, pointRadius: 4 },
-      { label: 'No agresivos', data: safData, borderColor: '#22c55e',
-        backgroundColor: 'rgba(34,197,94,.1)', fill: true, tension: .3, pointRadius: 4 },
+      {
+        label: 'Agresivos', data: aggData,
+        borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.1)',
+        fill: true, tension: .3, pointRadius: 4
+      },
+      {
+        label: 'No agresivos', data: safData,
+        borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.1)',
+        fill: true, tension: .3, pointRadius: 4
+      }
     ]
   },
   options: {
-    ...chartDefaults,
     scales: {
-      x: { ticks: { color: '#64748b' }, grid: { color: '#262c3a' } },
-      y: { ticks: { color: '#64748b' }, grid: { color: '#262c3a' }, beginAtZero: true }
-    }
+      x: {
+        ticks: {
+          color: '#64748b',
+          maxRotation: 45,
+          minRotation: 30,
+          autoSkip: true,
+          maxTicksLimit: 7
+        },
+        grid: { color: '#262c3a' }
+      },
+      y: {
+        ticks: { color: '#64748b' },
+        grid: { color: '#262c3a' },
+        beginAtZero: true
+      }
+    },
+    plugins: { legend: { labels: { color: '#64748b' } } }
   }
 });
 {% endif %}
